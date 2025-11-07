@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueEase - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    
+    <!-- ============================================================================ -->
+    <!-- LOGIN CONTAINER -->
+    <!-- ============================================================================ -->
+    
+    <div class="login-container">
+        <div class="login-card">
+            
+            <!-- ================================================================ -->
+            <!-- HEADER - Logo and Brand -->
+            <!-- ================================================================ -->
+            
+            <div class="login-header">
+                <div class="login-logo">🎯</div>
+                <h1>QueueEase</h1>
+                <p>Skip the wait, enjoy your time</p>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- MESSAGES - Error and Success -->
+            <!-- ================================================================ -->
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+
+            <!-- ================================================================ -->
+            <!-- LOGIN FORM -->
+            <!-- ================================================================ -->
+            
+            <div id="loginForm" class="auth-form">
+                <h2>Welcome Back</h2>
+                <p class="form-subtitle">Enter your phone number to continue</p>
+                
+                <div class="input-group">
+                    <label for="loginPhone">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="loginPhone" 
+                        class="form-input" 
+                        placeholder="+1 (555) 123-4567"
+                        maxlength="15"
+                    >
+                </div>
+
+                <button class="btn btn-primary btn-full" onclick="handleLogin()">
+                    Login
+                </button>
+
+                <p class="form-toggle">
+                    Don't have an account? 
+                    <a href="#" onclick="toggleForms(); return false;">Register</a>
+                </p>
+            </div>
+
+            <!-- ================================================================ -->
+            <!-- REGISTRATION FORM -->
+            <!-- ================================================================ -->
+            
+            <div id="registerForm" class="auth-form" style="display: none;">
+                <h2>Create Account</h2>
+                <p class="form-subtitle">Join QueueEase today</p>
+                
+                <div class="input-group">
+                    <label for="registerName">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="registerName" 
+                        class="form-input" 
+                        placeholder="John Doe"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="registerPhone">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="registerPhone" 
+                        class="form-input" 
+                        placeholder="+1 (555) 123-4567"
+                        maxlength="15"
+                    >
+                </div>
+
+                <button class="btn btn-primary btn-full" onclick="handleRegister()">
+                    Register
+                </button>
+
+                <p class="form-toggle">
+                    Already have an account? 
+                    <a href="#" onclick="toggleForms(); return false;">Login</a>
+                </p>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ============================================================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================================================ -->
+    
+    <script>
+        
+        // ========================================================================
+        // CONFIGURATION
+        // ========================================================================
+        
+        const CONFIG = {
+            MIN_PHONE_LENGTH: 10,           // Minimum digits for phone validation
+            MIN_NAME_LENGTH: 2,             // Minimum characters for name
+            MESSAGE_TIMEOUT: 5000,          // Error message auto-hide timeout (ms)
+            REDIRECT_DELAY: 1000,           // Delay before redirect after success (ms)
+        };
+        
+        const MESSAGES = {
+            // Validation messages
+            PHONE_REQUIRED: 'Please enter your phone number',
+            PHONE_INVALID: `Please enter a valid phone number (at least ${CONFIG.MIN_PHONE_LENGTH} digits)`,
+            NAME_REQUIRED: 'Please enter your name',
+            NAME_TOO_SHORT: `Name must be at least ${CONFIG.MIN_NAME_LENGTH} characters`,
+            
+            // Success messages
+            LOGIN_SUCCESS: 'Login successful! Redirecting...',
+            REGISTER_SUCCESS: 'Registration successful! Redirecting...',
+            
+            // Error messages
+            LOGIN_FAILED: 'Login failed',
+            REGISTER_FAILED: 'Registration failed',
+            GENERIC_ERROR: 'An error occurred. Please try again.',
+        };
+        
+        const ROUTES = {
+            LOGIN: '/api/login',
+            REGISTER: '/api/register',
+            HOME: '/',
+        };
+        
+        
+        // ========================================================================
+        // UI STATE MANAGEMENT
+        // ========================================================================
+        
+        /**
+         * Toggle between login and registration forms
+         */
+        function toggleForms() {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            
+            // Hide all messages
+            hideAllMessages();
+            
+            // Toggle forms
+            if (loginForm.style.display !== 'none') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+            } else {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+            }
+        }
+        
+        
+        // ========================================================================
+        // MESSAGE DISPLAY FUNCTIONS
+        // ========================================================================
+        
+        /**
+         * Show error message to user
+         */
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+            
+            // Hide success message
+            successDiv.style.display = 'none';
+            
+            // Show error message
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Auto-hide after timeout
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, CONFIG.MESSAGE_TIMEOUT);
+        }
+
+        /**
+         * Show success message to user
+         */
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            const errorDiv = document.getElementById('errorMessage');
+            
+            // Hide error message
+            errorDiv.style.display = 'none';
+            
+            // Show success message
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+        
+        /**
+         * Hide all messages
+         */
+        function hideAllMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        
+        // ========================================================================
+        // VALIDATION FUNCTIONS
+        // ========================================================================
+        
+        /**
+         * Validate phone number format
+         * @param {string} phone - Phone number to validate
+         * @returns {boolean} - True if valid, false otherwise
+         */
+        function validatePhone(phone) {
+            const cleaned = phone.replace(/\D/g, '');
+            return cleaned.length >= CONFIG.MIN_PHONE_LENGTH;
+        }
+        
+        /**
+         * Validate name format
+         * @param {string} name - Name to validate
+         * @returns {boolean} - True if valid, false otherwise
+         */
+        function validateName(name) {
+            return name && name.length >= CONFIG.MIN_NAME_LENGTH;
+        }
+        
+        
+        // ========================================================================
+        // LOGIN FUNCTIONALITY
+        // ========================================================================
+        
+        /**
+         * Handle login form submission
+         */
+        async function handleLogin() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            
+            // Validate phone number
+            if (!phone) {
+                showError(MESSAGES.PHONE_REQUIRED);
+                return;
+            }
+
+            if (!validatePhone(phone)) {
+                showError(MESSAGES.PHONE_INVALID);
+                return;
+            }
+
+            // Attempt login
+            try {
+                const response = await fetch(ROUTES.LOGIN, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success - redirect to home
+                    showSuccess(MESSAGES.LOGIN_SUCCESS);
+                    setTimeout(() => {
+                        window.location.href = ROUTES.HOME;
+                    }, CONFIG.REDIRECT_DELAY);
+                } else {
+                    // Failed - show error
+                    showError(data.error || MESSAGES.LOGIN_FAILED);
+                }
+            } catch (error) {
+                showError(MESSAGES.GENERIC_ERROR);
+                console.error('Login error:', error);
+            }
+        }
+        
+        
+        // ========================================================================
+        // REGISTRATION FUNCTIONALITY
+        // ========================================================================
+        
+        /**
+         * Handle registration form submission
+         */
+        async function handleRegister() {
+            const name = document.getElementById('registerName').value.trim();
+            const phone = document.getElementById('registerPhone').value.trim();
+            
+            // Validate name
+            if (!name) {
+                showError(MESSAGES.NAME_REQUIRED);
+                return;
+            }
+
+            if (!validateName(name)) {
+                showError(MESSAGES.NAME_TOO_SHORT);
+                return;
+            }
+
+            // Validate phone
+            if (!phone) {
+                showError(MESSAGES.PHONE_REQUIRED);
+                return;
+            }
+
+            if (!validatePhone(phone)) {
+                showError(MESSAGES.PHONE_INVALID);
+                return;
+            }
+
+            // Attempt registration
+            try {
+                const response = await fetch(ROUTES.REGISTER, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        name: name,
+                        phone: phone 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success - redirect to home
+                    showSuccess(MESSAGES.REGISTER_SUCCESS);
+                    setTimeout(() => {
+                        window.location.href = ROUTES.HOME;
+                    }, CONFIG.REDIRECT_DELAY);
+                } else {
+                    // Failed - show error
+                    showError(data.error || MESSAGES.REGISTER_FAILED);
+                }
+            } catch (error) {
+                showError(MESSAGES.GENERIC_ERROR);
+                console.error('Registration error:', error);
+            }
+        }
+        
+        
+        // ========================================================================
+        // KEYBOARD EVENT HANDLERS
+        // ========================================================================
+        
+        /**
+         * Setup keyboard shortcuts for forms
+         */
+        function setupKeyboardHandlers() {
+            // Login form - Enter to submit
+            document.getElementById('loginPhone').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+
+            // Register form - Enter on name field to focus phone
+            document.getElementById('registerName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('registerPhone').focus();
+                }
+            });
+
+            // Register form - Enter on phone field to submit
+            document.getElementById('registerPhone').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleRegister();
+                }
+            });
+        }
+        
+        
+        // ========================================================================
+        // INITIALIZATION
+        // ========================================================================
+        
+        /**
+         * Initialize the application when DOM is ready
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            setupKeyboardHandlers();
+        });
+        
+    </script>
+    
+</body>
+</html>
